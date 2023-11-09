@@ -48,26 +48,36 @@ def not_found(error) -> str:
 
 
 @app.before_request
-def authenticate_user():
+def filter_request():
     """
-    Authenticates a user before processing a request.
+    Filter request
     """
-    if auth:
-        excluded_paths = [
-            "/api/v1/status/",
-            "/api/v1/unauthorized/",
-            "/api/v1/forbidden/",
-        ]
-        if auth.require_auth(request.path, excluded_paths):
-            auth_header = auth.authorization_header(request)
-            user = auth.current_user(request)
-            if auth_header is None:
-                abort(401)
-            if user is None:
-                abort(403)
+
+    if auth is None:
+        return
+
+    excluded_paths = [
+        "/api/v1/status/",
+        "/api/v1/unauthorized/",
+        "/api/v1/forbidden/",
+        "/api/v1/auth_session/login/",
+    ]
+    if not auth.require_auth(request.path, excluded_paths):
+        return
+
+    if (
+        auth.authorization_header(request) is None
+        and auth.session_cookie(request) is None
+    ):
+        abort(401)
+
+    if auth.current_user(request) is None:
+        abort(403)
+
+    request.current_user = auth.current_user(request)
 
 
 if __name__ == "__main__":
     host = getenv("API_HOST", "0.0.0.0")
     port = getenv("API_PORT", "5000")
-    app.run(host=host, port=port)
+    app.run(host=host, port=port, debug=True)
