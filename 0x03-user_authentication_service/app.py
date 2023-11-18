@@ -39,24 +39,43 @@ def register_user() -> Tuple[str, int]:
     return jsonify(response)
 
 
-@app.route('/sessions', methods=['POST'], strict_slashes=False)
+@app.route("/sessions", methods=["POST"], strict_slashes=False)
 def login() -> str:
     """
     Implements login functionality
     Returns:
         str: JSON payload with session_id
     """
-    email = request.form.get('email')
-    password = request.form.get('password')
+    email = request.form.get("email")
+    password = request.form.get("password")
     valid_login = AUTH.valid_login(email, password)
 
     if not valid_login:
         abort(401)
 
     session_id = AUTH.create_session(email)
-    response = jsonify({'email': email, 'message': 'logged in'})
-    response.set_cookie('session_id', session_id)
+    response = jsonify({"email": email, "message": "logged in"})
+    response.set_cookie("session_id", session_id)
     return response
+
+
+@app.route("/sessions", methods=["DELETE"], strict_slashes=False)
+def logout() -> Union[abort, redirect]:
+    """
+    Logout basically means to set the session_id to None
+
+    Returns:
+        Union[abort, redirect]: 403 if session_id or user is None
+        else redirect to '/'
+    """
+    session_id = request.cookies.get("session_id")
+    user = AUTH.get_user_from_session_id(session_id)
+
+    if session_id is None or user is None:
+        abort(403)
+
+    AUTH.destroy_session(user.id)
+    return redirect("/")
 
 
 if __name__ == "__main__":
